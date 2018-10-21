@@ -28,7 +28,7 @@ namespace ChatAppApi.Services
         public async Task<List<Message>> GetAllAsync()
         {
             return await Task.Run(() => {
-                return _context.Messages.ToList();
+                return _context.Messages.OrderByDescending(m => m.SentDate).ToList();
             });
         }
 

@@ -18,6 +18,11 @@ namespace ChatAppApi.Hubs
             await Clients.All.SendAsync("ReceiveMessage", user, msg);
         }
 
+        public string GetCurrentConnectionId()
+        {
+            return Context.ConnectionId;
+        }
+
         public override Task OnConnectedAsync()
         {
             UserHandler.ConnectedIds.Add(Context.ConnectionId);

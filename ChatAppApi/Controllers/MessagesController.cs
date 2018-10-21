@@ -37,9 +37,12 @@ namespace ChatAppApi.Controllers
 
         //POST: Message
         [HttpPost]
-        public async Task<IActionResult> Index([FromBody] Message message)
+        public async Task<IActionResult> Index([FromBody] Message message, string connId)
         {
             Console.WriteLine($"HERE >>>>>>>>> {message}");
+            Console.WriteLine($"HERE >>>>>>>>> ID: {connId}");
+            message.SentDate = DateTime.Now;
+            Console.WriteLine($"HERE >>>>>>>>> FECHA: {message.SentDate}");
             if (!ModelState.IsValid)
             {
                 return BadRequest();
@@ -48,7 +51,8 @@ namespace ChatAppApi.Controllers
             if(result != null)
             {
                 // call hub
-                await this._chatHub.Clients.All.SendAsync("ReceiveMessage", result);
+                await this._chatHub.Clients.AllExcept(connId)
+                    .SendAsync("ReceiveMessage", result);
                 return Ok(message);
             }else
             {
