@@ -15,6 +15,9 @@ using ChatAppApi.Models;
 using Microsoft.EntityFrameworkCore;
 using ChatAppApi.Hubs;
 using ChatAppApi.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace ChatAppApi
 {
@@ -30,6 +33,19 @@ namespace ChatAppApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddIdentity<UserApp, IdentityRole>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+            }).AddEntityFrameworkStores<AppDbContext>();
+
+            services.AddAuthentication().AddCookie().AddJwtBearer(cfg => {
+                cfg.TokenValidationParameters = new TokenValidationParameters() {
+                    ValidIssuer = Configuration["Tokens:issuer"],
+                    ValidAudience = Configuration["Tokens:audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Tokens:key"]))
+                };
+            });
+
             services.AddDbContext<AppDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("chatapp")));
 
             services.AddCors(o => o.AddPolicy("CorsPolicy", builder =>
@@ -45,7 +61,7 @@ namespace ChatAppApi
             
             services.AddSignalR();
 
-
+            services.AddTransient<Seeder>();
             services.AddScoped<MessagesService>();
         }
 
@@ -55,11 +71,17 @@ namespace ChatAppApi
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                
             }
 
             app.UseCors("CorsPolicy");
 
-            app.UseMvc();
+            app.UseAuthentication();
+
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute("default", "{controller=Home}/{action=Index}/{id?}");
+            });
 
             app.UseSignalR(routes =>
             {

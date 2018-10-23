@@ -7,6 +7,8 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ChatAppApi.Data;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ChatAppApi
 {
@@ -14,7 +16,22 @@ namespace ChatAppApi
     {
         public static void Main(string[] args)
         {
-            CreateWebHostBuilder(args).Build().Run();
+            var host = CreateWebHostBuilder(args).Build();
+            var scopeFactory = host.Services.GetService<IServiceScopeFactory>();
+
+            TrySeed(host);
+
+            host.Run();
+        }
+
+        public static async void TrySeed(IWebHost host)
+        {
+            var scopeFactory = host.Services.GetService<IServiceScopeFactory>();
+            using (var scope = scopeFactory.CreateScope())
+            {
+                var seeder = scope.ServiceProvider.GetService<Seeder>();
+                await seeder.Seed();
+            }
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>

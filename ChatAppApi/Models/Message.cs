@@ -16,5 +16,7 @@ namespace ChatAppApi.Models
         [DataType(DataType.Date)]
         public DateTime SentDate { get; set; }
 
+        public UserApp User { get; set; }
+
     }
 }
