@@ -63,6 +63,7 @@ namespace ChatAppApi
 
             services.AddTransient<Seeder>();
             services.AddScoped<MessagesService>();
+            services.AddScoped<AccountService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

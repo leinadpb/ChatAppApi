@@ -72,5 +72,19 @@ namespace ChatAppApi.Controllers
             }
         }
 
+        //GET: For teastable purpuses
+        [HttpGet]
+        [Route("GetUserInfo")]
+        public async Task<IActionResult> GetUserInfo()
+        {
+            Console.WriteLine($"HERE >>>>>>>>>> {User.Identity.Name}");
+            var result = await _userManager.FindByEmailAsync(User.Identity.Name);
+            if(result != null)
+            {
+                return Ok(result);
+            }
+            return BadRequest();
+        }
+
     }
 }

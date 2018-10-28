@@ -15,28 +15,48 @@ using System.Text;
 using Newtonsoft.Json;
 using JWT.Builder;
 using JWT;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace ChatAppApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class AccountController : ControllerBase
     {
+        private readonly AccountService _service;
         private readonly UserManager<UserApp> _userManager;
-        private readonly SignInManager<UserApp> _signManager;
-        private readonly IConfiguration _config;
 
-        public AccountController(MessagesService srv,
-           UserManager<UserApp> userManager, SignInManager<UserApp> signManager,
-           IConfiguration cofig)
+        public AccountController(AccountService srv, UserManager<UserApp> userManager)
         {
+            _service = srv;
             _userManager = userManager;
-            _signManager = signManager;
-            _config = cofig;
+        }
+
+        [HttpPost]
+        [Route("Register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _service.AddUser(model);
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return StatusCode(500);
+                }
+            }
+            return BadRequest();
         }
 
         [HttpPost]
         [Route("Login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
             if (ModelState.IsValid)
@@ -44,75 +64,17 @@ namespace ChatAppApi.Controllers
                 var user = await _userManager.FindByEmailAsync(model.Username);
                 if (user != null)
                 {
-                    var id_token = await CreateToken(model);
-                    return Ok(id_token);
+                    var id_token = await _service.CreateToken(model);
+                    if (id_token != null)
+                    {
+                        return Ok(id_token);
+                    }
                 }
                 return NotFound();
             }
             return BadRequest();
         }
 
-        private async Task<object> CreateToken([FromBody] LoginModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                var user = await _userManager.FindByEmailAsync(model.Username);
-                if (user != null)
-                {
-                    // - false for lockOut on Failure
-                    var result = await _signManager.CheckPasswordSignInAsync(user, model.Password, false);
-                    if (result.Succeeded)
-                    {
-                        // Create the token
-                        var claims = new[] {
-                            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-                        };
-                        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Tokens:key"]));
-                        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-                        var token = new JwtSecurityToken(
-                            _config["Tokens:issuer"],
-                            _config["Tokens:audience"],
-                            claims,
-                            expires: DateTime.UtcNow.AddMinutes(30),
-                            signingCredentials: creds
-                        );
-
-                        var results = new
-                        {
-                            token = new JwtSecurityTokenHandler().WriteToken(token),
-                            expiration = token.ValidTo
-                        };
-                        return results;
-                    }
-                }
-                return null;
-            }
-            return null;
-        }
-        [HttpPost]
-        [Route("Decode")]
-        public async Task<IActionResult> Decode(string token)
-        {
-            string secret = _config["Tokens:key"];
-            try
-            {
-                var json = new JwtBuilder()
-                    .WithSecret(secret)
-                    .Decode(token);
-                Console.WriteLine(json);
-                return Ok(json);
-            }
-            catch (SecurityTokenExpiredException)
-            {
-                return BadRequest("Token has expired!");
-            }
-            catch (SignatureVerificationException)
-            {
-                Console.WriteLine("Token has invalid signature!");
-            }
-            return BadRequest();
-        }
+        
     }
 }
